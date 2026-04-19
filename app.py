@@ -78,6 +78,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 class SeedAnalysisRequest(BaseModel):
     plant_name: str
     description: str = ""
+    image_base64: str = ""
 
 class ChatRequest(BaseModel):
     message: str
@@ -125,15 +126,36 @@ def match_plant(name: str, data: dict):
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 @app.post("/analyze-seed")
 async def analyze_seed(req: SeedAnalysisRequest):
-    query = (
-        f"هل بذور {req.plant_name} صالحة للزراعة؟ "
-        "أجب بـ JSON فقط بهذا الشكل بدون أي نص آخر: "
+    json_schema = (
         '{"viability_percent": <0-100>, "success_rate": <0-100>, '
         '"status": "<صالحة أو غير صالحة>", "recommendation": "<جملة>", '
         '"best_soil": "<نوع التربة>", "notes": "<ملاحظة>"}'
     )
-    result = rag_chain.invoke({"input": query})
-    answer = result.get("answer", "")
+
+    if req.image_base64:
+        from groq import Groq as GroqClient
+        client = GroqClient(api_key=GROQ_API_KEY)
+        vision_prompt = (
+            f"أنت خبير زراعي. انظر إلى هذه الصورة وحدد إذا كانت تحتوي على بذور {req.plant_name} وما مدى صلاحيتها للزراعة. "
+            f"أجب بـ JSON فقط بهذا الشكل: {json_schema}"
+        )
+        resp = client.chat.completions.create(
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            messages=[{"role": "user", "content": [
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{req.image_base64}"}},
+                {"type": "text", "text": vision_prompt},
+            ]}],
+            max_tokens=512,
+        )
+        answer = resp.choices[0].message.content or ""
+    else:
+        query = (
+            f"هل بذور {req.plant_name} صالحة للزراعة؟ "
+            f"أجب بـ JSON فقط بهذا الشكل بدون أي نص آخر: {json_schema}"
+        )
+        result = rag_chain.invoke({"input": query})
+        answer = result.get("answer", "")
+
     try:
         m = re.search(r"\{.*\}", answer, re.DOTALL)
         if m:

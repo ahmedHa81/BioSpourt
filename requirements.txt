@@ -5,6 +5,7 @@ langchain-community
 langchain-core
 langchain-text-splitters
 langchain-groq
+groq
 langchain-classic
 rank-bm25
 docx2txt
