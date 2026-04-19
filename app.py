@@ -8,9 +8,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from langchain_community.document_loaders import Docx2txtLoader
+from langchain_community.retrievers import BM25Retriever
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_chroma import Chroma
 from langchain_groq import ChatGroq
 from langchain_classic.chains import create_retrieval_chain
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
@@ -45,11 +44,8 @@ async def lifespan(app: FastAPI):
     docs    = loader.load()
     splits  = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=100).split_documents(docs)
 
-    # Free local embeddings — no Ollama needed
-    embeddings   = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-    vectorstore  = Chroma.from_documents(splits, embeddings, persist_directory="./chroma_db_v2")
+    retriever = BM25Retriever.from_documents(splits, k=4)
 
-    # Groq LLM — fast & free
     llm = ChatGroq(
         api_key=GROQ_API_KEY,
         model="llama-3.1-8b-instant",
@@ -67,7 +63,6 @@ async def lifespan(app: FastAPI):
         ("human", "{input}"),
     ])
 
-    retriever  = vectorstore.as_retriever(search_kwargs={"k": 4})
     qa_chain   = create_stuff_documents_chain(llm, prompt)
     rag_chain  = create_retrieval_chain(retriever, qa_chain)
 
