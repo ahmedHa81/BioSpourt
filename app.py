@@ -136,8 +136,11 @@ async def analyze_seed(req: SeedAnalysisRequest):
         from groq import Groq as GroqClient
         client = GroqClient(api_key=GROQ_API_KEY)
         vision_prompt = (
-            f"أنت خبير زراعي. انظر إلى هذه الصورة وحدد إذا كانت تحتوي على بذور {req.plant_name} وما مدى صلاحيتها للزراعة. "
-            f"أجب بـ JSON فقط بهذا الشكل: {json_schema}"
+            f"You are an expert agricultural botanist. Carefully examine this image.\n"
+            f"The user claims these are seeds of '{req.plant_name}'.\n"
+            f"Analyze: seed color, texture, size, firmness appearance, mold/damage signs, and overall viability.\n"
+            f"Even if the image is unclear or shows dried/processed seeds, give your best agricultural assessment.\n"
+            f"Respond ONLY in Arabic with valid JSON matching exactly this schema (no extra text):\n{json_schema}"
         )
         resp = client.chat.completions.create(
             model="meta-llama/llama-4-scout-17b-16e-instruct",
@@ -145,7 +148,7 @@ async def analyze_seed(req: SeedAnalysisRequest):
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{req.image_base64}"}},
                 {"type": "text", "text": vision_prompt},
             ]}],
-            max_tokens=512,
+            max_tokens=600,
         )
         answer = resp.choices[0].message.content or ""
     else:
