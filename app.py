@@ -143,7 +143,7 @@ async def analyze_seed(req: SeedAnalysisRequest):
             f"Respond ONLY in Arabic with valid JSON matching exactly this schema (no extra text):\n{json_schema}"
         )
         resp = client.chat.completions.create(
-            model="llama-3.2-11b-vision-preview",
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
             messages=[{"role": "user", "content": [
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{req.image_base64}"}},
                 {"type": "text", "text": vision_prompt},
