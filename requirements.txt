@@ -6,6 +6,10 @@ langchain-ollama
 langchain-chroma
 langchain-core
 langchain-text-splitters
+langchain-groq
+langchain-huggingface
+langchain-classic
+sentence-transformers
 chromadb
 docx2txt
 pydantic
